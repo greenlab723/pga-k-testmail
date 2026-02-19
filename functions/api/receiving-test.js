@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
       "";
 
     if (!email) {
-      return json({ ok: false, message: "メールアドレスを入力してください。" }, 400);
+      return json({ ok: false, message: "メールアドレスを入力してくださいませ。" }, 400);
     }
 
     const payload = {
