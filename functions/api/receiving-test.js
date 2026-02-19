@@ -11,6 +11,14 @@ export async function onRequestPost(context) {
 
     // --- body を安全に読む（JSON / x-www-form-urlencoded / multipart 対応）---
     const body = await readBody_(request);
+    return json({
+  ok: true,
+  debug: true,
+  ct: request.headers.get("content-type") || "",
+  ua: request.headers.get("user-agent") || "",
+  body
+}, 200);
+
 
     // email は複数キーで拾う（事故耐性）
     const emailRaw =
