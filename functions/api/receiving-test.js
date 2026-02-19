@@ -10,15 +10,8 @@ export async function onRequestPost(context) {
     }
 
     // --- body を安全に読む（JSON / x-www-form-urlencoded / multipart 対応）---
+    // ★重要：Pages Functions では request.text() が空になるケースがあるため clone() して読む
     const body = await readBody_(request);
-    return json({
-  ok: true,
-  debug: true,
-  ct: request.headers.get("content-type") || "",
-  ua: request.headers.get("user-agent") || "",
-  body
-}, 200);
-
 
     // email は複数キーで拾う（事故耐性）
     const emailRaw =
@@ -82,28 +75,29 @@ export async function onRequestPost(context) {
 }
 
 /**
- * Cloudflare Pages Functions で request.json() が失敗するケースに備え、
- * content-type を見て text/URLSearchParams/formData で確実に取り出す。
+ * Cloudflare Pages Functions で request.json() が失敗する/本文が空になるケースに備え、
+ * content-type を見て clone() した request から text/URLSearchParams/formData で確実に取り出す。
  */
 async function readBody_(request) {
   const ct = (request.headers.get("content-type") || "").toLowerCase();
 
-  // multipart は text() で読まない（境界が壊れる/二重読みになりやすい）
+  // multipart は clone して formData を読む
   if (ct.includes("multipart/form-data")) {
-    const fd = await request.formData().catch(() => null);
+    const req2 = request.clone();
+    const fd = await req2.formData().catch(() => null);
     if (!fd) return {};
     return Object.fromEntries(fd.entries());
   }
 
-  // それ以外は一旦 text で吸ってから解釈する（これが一番堅い）
-  const raw = await request.text().catch(() => "");
+  // それ以外は clone() して text で吸ってから解釈する（これが一番堅い）
+  const req2 = request.clone();
+  const raw = await req2.text().catch(() => "");
   const text = typeof raw === "string" ? raw : "";
 
   if (ct.includes("application/json")) {
     try {
       return text ? JSON.parse(text) : {};
     } catch {
-      // JSONが壊れてても落とさず {} にする
       return {};
     }
   }
