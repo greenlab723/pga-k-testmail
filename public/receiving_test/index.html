@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>メール受信テスト | PGA-K</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 24px; line-height: 1.6; }
+    .box { max-width: 720px; }
+    input { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
+    button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
+    .muted { color: #666; font-size: 14px; }
+    .err { color: #b00020; }
+    .ok { color: #0b6; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>メール受信テスト</h2>
+    <p>「<b>info@pga-k.com</b> からのメールを受信できるか」を確認します。</p>
+
+    <label for="email">メールアドレス</label><br />
+    <input id="email" type="email" placeholder="example@example.com" autocomplete="email" /><br /><br />
+
+    <div class="row">
+      <button id="btn" type="button" onclick="sendTest()">テストメールを送信</button>
+      <span class="muted">受信許可するドメイン：<b>pga-k.com</b></span>
+    </div>
+    <div id="msg" class="muted" style="margin-top:12px;"></div>
+
+    <hr />
+    <h3>流れ</h3>
+    <ol>
+      <li>テストメールを送信</li>
+      <li>受信トレイを確認</li>
+      <li>迷惑メール / プロモーション / ゴミ箱も確認</li>
+      <li>見つからなければ、送信後の案内で対処を確認</li>
+    </ol>
+    <p class="muted">送信後の案内：<a href="/receiving_test/after/">こちら</a></p>
+  </div>
+
+<script>
+  function setBusy(busy) {
+    const btn = document.getElementById('btn');
+    btn.disabled = busy;
+    btn.textContent = busy ? '送信中...' : 'テストメールを送信';
+  }
+
+  async function sendTest() {
+    const email = document.getElementById('email').value.trim();
+    const msg = document.getElementById('msg');
+    msg.className = 'muted';
+    msg.textContent = '';
+
+    if (!email) {
+      msg.className = 'err';
+      msg.textContent = 'メールアドレスを入力してください。';
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await fetch('/api/receiving-test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          ua: navigator.userAgent,
+          page: location.pathname
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data || !data.ok) {
+        msg.className = 'err';
+        msg.textContent = (data && data.message) ? data.message : '送信に失敗しました。';
+        setBusy(false);
+        return;
+      }
+
+      msg.className = 'ok';
+      msg.textContent = '送信しました。送信後の案内ページへ移動します…';
+      location.href = '/receiving_test/after/';
+    } catch (e) {
+      msg.className = 'err';
+      msg.textContent = 'エラー：' + (e && e.message ? e.message : e);
+      setBusy(false);
+    }
+  }
+</script>
+</body>
+</html>
